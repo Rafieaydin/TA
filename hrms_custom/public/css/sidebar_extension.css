@@ -1,0 +1,41 @@
+.sidebar-item-icon svg {
+    color: white !important;
+}
+
+.sidebar-item-icon svg use {
+    color: white !important;
+    fill: white !important;
+}
+
+/* Fallback untuk semua kemungkinan */
+.sidebar-item-icon svg use path,
+.sidebar-item-icon svg use circle,
+.sidebar-item-icon svg use rect {
+    fill: white !important;
+}
+
+.sidebar-item-icon .icon{
+    color: white !important;
+}
+.title-container .sidebar-item-label, .sidebar-item-label{
+    color: white !important;
+}
+.title-container .sidebar-item-label:hover{
+    color: black !important;
+}
+
+.body-sidebar,
+.body-sidebar-container  {
+    background-color: #1f305e !important;
+}
+
+.active-sidebar {
+    background-color: #E34234 !important;
+}
+
+.item-anchor:hover {
+    color: white !important;
+    background-color: #E34234 !important;
+    border-radius: inherit !important;
+}
+
