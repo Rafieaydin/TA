@@ -1,5 +1,5 @@
 name: Build
-
+#sonar qube build only on main branch, as it is the only branch that is analyzed in sonar qube
 on:
   push:
     branches:
