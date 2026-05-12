@@ -1,26 +1,28 @@
-name: Build
-#sonar qube build only on main branch, as it is the only branch that is analyzed in sonar qube
+name: SonarQube Scan
+
 on:
   push:
-    branches:
-      - main
-
+    branches: [ main ]
 
 jobs:
-  build:
-    name: Build and analyze
+  scan:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      - name: Fix paths in coverage.xml
+        run: |
+          # Hapus "apps/" dari semua path di coverage.xml
+          sed -i 's|apps/||g' coverage.xml
+          # Hapus prefix "apps.hrms_custom" di package name
+          sed -i 's|apps.hrms_custom|hrms_custom|g' coverage.xml
+      
       - uses: sonarsource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.python.coverage.reportPaths=**/coverage*.xml
-            -Dsonar.exclusions=**/tests/**,**/__pycache__/**
-            -Dsonar.python.version=3
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=hrms_custom
+            -Dsonar.exclusions=**/tests/**,**/__pycache_/**
