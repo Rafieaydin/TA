@@ -10,6 +10,25 @@ jobs:
   sonar:
     runs-on: ubuntu-latest
     
+    services:
+      # ✅ Service untuk MariaDB
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: test_frappe
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      # ✅ Service untuk Redis
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,13 +40,52 @@ jobs:
         with:
           python-version: '3.12'
       
-      - name: Install Frappe bench
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            redis-server \
+            git \
+            curl \
+            libmysqlclient-dev \
+            libssl-dev \
+            pkg-config
+      
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install frappe-bench
         run: |
           pip install frappe-bench
-          bench init frappe-bench --frappe-branch version-15
+      
+      - name: Initialize bench
+        run: |
+          # Inisialisasi bench tanpa redis (akan pakai service dari GitHub)
+          bench init frappe-bench --frappe-branch version-15 --skip-redis-config
           cd frappe-bench
-          bench get-app hrms_custom ${{ github.workspace }}
-          bench setup requirements --dev
+          bench set-config -g db_host localhost
+          bench set-config -g redis_cache redis://localhost:6379
+          bench set-config -g redis_queue redis://localhost:6379
+          bench set-config -g redis_socketio redis://localhost:6379
+      
+      - name: Install app
+        run: |
+          cd frappe-bench
+          # Copy app ke bench
+          mkdir -p apps/hrms_custom
+          cp -r ${{ github.workspace }}/hrms_custom apps/
+          bench get-app hrms_custom
+      
+      - name: Create site for testing
+        run: |
+          cd frappe-bench
+          bench new-site test_site.local --db-root-password root --admin-password admin --no-mariadb-socket
+          bench --site test_site.local install-app hrms_custom
       
       - name: Run tests with coverage
         run: |
@@ -37,12 +95,14 @@ jobs:
       - name: Generate coverage.xml in hrms_custom folder
         run: |
           cd frappe-bench
+          # Install coverage jika belum ada
+          pip install coverage
           # Generate coverage.xml di dalam folder app
-          ./env/bin/coverage xml -i \
+          coverage xml -i \
             --data-file=sites/.coverage \
             -o apps/hrms_custom/coverage.xml
       
-      - name: Upload coverage as artifact (opsional, untuk debug)
+      - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -59,5 +119,5 @@ jobs:
             -Dsonar.projectName=HRMS Custom
             -Dsonar.sources=apps/hrms_custom/hrms_custom
             -Dsonar.python.coverage.reportPaths=apps/hrms_custom/coverage.xml
-            -Dsonar.exclusions=**/tests/**,**/__pycache__/**
+            -Dsonar.exclusions=**/tests/**,**/__pycache_/**
             -Dsonar.python.version=3
