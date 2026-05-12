@@ -3,7 +3,7 @@ import requests
 
 # API untuk Employee Management 
 @frappe.whitelist()
-def get_employee():
+def get_employee(methods=['GET']):
     return {
         "message": "Data retrieved successfully",
         "data": frappe.db.get_list('Employee',
@@ -23,13 +23,14 @@ def find_employee_by_name(name):
 @frappe.whitelist(methods=['POST'])
 def create_employee(nippos, company, status, first_name=None, middle_name=None, 
                    last_name=None, gender=None, date_of_birth=None, salutation=None, date_of_joining=None):  
-    # cek apakah request nya sudah post
-    if frappe.request.method != 'POST':
-        frappe.throw("Invalid request method. Please use POST.")
+                   
+    # cek apakah request nya sudah post // kalau mau di test matiin aja dulu
+    # if frappe.request.method != 'POST':
+    #     frappe.throw("Invalid request method. Please use POST.")
     
     # Set default values jika tidak dikirim
     if not first_name:
-        first_name = employee_name.split()[0] if employee_name else ''
+        first_name = "Employee"
     
     new_employee = frappe.get_doc({
         'doctype': 'Employee',
@@ -57,8 +58,8 @@ def create_employee(nippos, company, status, first_name=None, middle_name=None,
 @frappe.whitelist(methods=['POST'])
 def update_employee(nippos, status):
     """Update status employee berdasarkan nippos"""
-    if frappe.request.method != 'POST':
-        frappe.throw("Invalid request method. Please use POST.")
+    # if frappe.request.method != 'POST':
+    #     frappe.throw("Invalid request method. Please use POST.")
     
     # Filter berdasarkan nippos (custom_nippos field)
     employee = frappe.db.get_list('Employee', fields=['name'], filters={'custom_nippos': nippos}, limit=1)
@@ -78,8 +79,8 @@ def update_employee(nippos, status):
 @frappe.whitelist(methods=['DELETE'])
 def delete_employee(nippos):
     """Delete employee berdasarkan nippos"""
-    if frappe.request.method != 'DELETE':
-        frappe.throw("Invalid request method. Please use DELETE.")
+    # if frappe.request.method != 'DELETE':
+    #     frappe.throw("Invalid request method. Please use DELETE.")
     
     # Cari employee berdasarkan nippos
     employee = frappe.db.get_list('Employee', fields=['name'], filters={'custom_nippos': nippos}, limit=1)

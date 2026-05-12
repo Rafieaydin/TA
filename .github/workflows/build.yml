@@ -1,27 +1,63 @@
-name: Build
-#sonar qube build only on main branch, as it is the only branch that is analyzed in sonar qube
+name: SonarQube Analysis
+
 on:
   push:
-    branches:
-      - main
-
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
-    name: Build and analyze
+  sonar:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@v3
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Frappe bench
+        run: |
+          pip install frappe-bench
+          bench init frappe-bench --frappe-branch version-15
+          cd frappe-bench
+          bench get-app hrms_custom ${{ github.workspace }}
+          bench setup requirements --dev
+      
+      - name: Run tests with coverage
+        run: |
+          cd frappe-bench
+          bench --site test_site.local run-tests --app hrms_custom --coverage
+      
+      - name: Generate coverage.xml in hrms_custom folder
+        run: |
+          cd frappe-bench
+          # Generate coverage.xml di dalam folder app
+          ./env/bin/coverage xml -i \
+            --data-file=sites/.coverage \
+            -o apps/hrms_custom/coverage.xml
+      
+      - name: Upload coverage as artifact (opsional, untuk debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: frappe-bench/apps/hrms_custom/coverage.xml
+      
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=hrms_custom
+            -Dsonar.projectName=HRMS Custom
+            -Dsonar.sources=apps/hrms_custom/hrms_custom
+            -Dsonar.python.coverage.reportPaths=apps/hrms_custom/coverage.xml
+            -Dsonar.exclusions=**/tests/**,**/__pycache__/**
+            -Dsonar.python.version=3
