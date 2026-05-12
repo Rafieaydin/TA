@@ -9,12 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
-      - name: Fix paths in coverage.xml
+      - name: Fix coverage.xml paths
         run: |
-          # File ada di subfolder hrms_custom/hrms_custom/
+          # Hapus satu level "hrms_custom/" dari path
+          sed -i 's|hrms_custom/hrms_custom/|hrms_custom/|g' hrms_custom/hrms_custom/coverage.xml
+          # Hapus prefix "apps/"
           sed -i 's|apps/||g' hrms_custom/hrms_custom/coverage.xml
-          sed -i 's|apps.hrms_custom|hrms_custom|g' hrms_custom/hrms_custom/coverage.xml
+          # Hapus path absolut
+          sed -i 's|/home/rafieaydin/Documents/TA/sonar/hcms/frappe-bench/||g' hrms_custom/hrms_custom/coverage.xml
       
       - uses: sonarsource/sonarqube-scan-action@v3
         env:
@@ -22,6 +27,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
+            -Dsonar.python.version=3.12
             -Dsonar.python.coverage.reportPaths=hrms_custom/hrms_custom/coverage.xml
             -Dsonar.sources=hrms_custom
             -Dsonar.exclusions=**/tests/**,**/__pycache_/**
