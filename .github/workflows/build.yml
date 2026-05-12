@@ -66,7 +66,7 @@ jobs:
       - name: Initialize bench
         run: |
           # Inisialisasi bench tanpa redis (akan pakai service dari GitHub)
-          bench init frappe-bench --frappe-branch version-15 --skip-redis-config
+          bench init frappe-bench --frappe-branch version-15 --skip-redis-config-generation
           cd frappe-bench
           bench set-config -g db_host localhost
           bench set-config -g redis_cache redis://localhost:6379
