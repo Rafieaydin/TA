@@ -21,6 +21,6 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.python.coverage.reportPaths=**/coverage*.xml
             -Dsonar.exclusions=**/tests/**,**/__pycache__/**
             -Dsonar.python.version=3
