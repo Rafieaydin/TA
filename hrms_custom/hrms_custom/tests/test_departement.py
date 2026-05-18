@@ -69,7 +69,6 @@ class TestDepartmentAPI(IntegrationTestCase):
         )
         frappe.db.commit()
         
-        # 🔥 FIX: Cari dengan nama yang benar (nama asli, tanpa suffix)
         # Karena API mencari berdasarkan 'name', kita cari dulu nama dokumennya
         dept_list = frappe.db.get_list('Department', 
             filters={'department_name': self.test_department},
@@ -172,7 +171,6 @@ class TestDepartmentAPI(IntegrationTestCase):
         )
         frappe.db.commit()
         
-        # 🔥 FIX: Dapatkan nama dokumen yang benar
         dept_list = frappe.db.get_list('Department', 
             filters={'department_name': self.test_department},
             fields=['name'])
@@ -245,7 +243,6 @@ class TestDepartmentAPI(IntegrationTestCase):
         )
         frappe.db.commit()
         
-        # 🔥 FIX: Dapatkan nama dokumen yang benar dari hasil create
         dept_name_in_db = result_create["department"]["name"]
         
         # Delete department dengan nama dokumen yang benar
