@@ -28,8 +28,8 @@ def create_department(department, company, parent_department="All Departments", 
     - parent_department: Parent department (default: All Departments)
     - is_group: Boolean true/false (default: False)
     """
-    if frappe.request.method != 'POST':
-        frappe.throw("Invalid request method. Please use POST.")
+    # if frappe.request.method != 'POST':
+    #     frappe.throw("Invalid request method. Please use POST.")
     
     # Validasi company - cek apakah company ada di database
     company_exists = frappe.db.exists('Company', company)
@@ -73,8 +73,8 @@ def update_department(department, company=None, parent_department=None, is_group
     - parent_department: Parent department baru (optional)
     - is_group: Boolean true/false (optional)
     """
-    if frappe.request.method != 'POST':
-        frappe.throw("Invalid request method. Please use POST.")
+    # if frappe.request.method != 'POST':
+    #     frappe.throw("Invalid request method. Please use POST.")
     
     # Cari department
     dept = frappe.db.get_list('Department', fields=['name'], filters={'name': department}, limit=1)
@@ -120,8 +120,8 @@ def delete_department(department):
     Parameters:
     - department: Nama department yang akan dihapus (wajib)
     """
-    if frappe.request.method != 'DELETE':
-        frappe.throw("Invalid request method. Please use DELETE.")
+    # if frappe.request.method != 'DELETE':
+    #     frappe.throw("Invalid request method. Please use DELETE.")
     
     # Cari department
     dept = frappe.db.get_list('Department', fields=['name'], filters={'name': department}, limit=1)
