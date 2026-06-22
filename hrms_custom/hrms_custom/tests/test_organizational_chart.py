@@ -14,7 +14,7 @@ class TestOrganizationalChart(IntegrationTestCase):
         self.test_department = f"Test Dept {self.timestamp}"
         self.sub_department = f"Sub Dept {self.timestamp}"
         
-        # 🔥 Buat company test dengan abbreviation UNIK
+        # Buat company test dengan abbreviation UNIK
         company = frappe.get_doc({
             "doctype": "Company",
             "company_name": self.test_company,
@@ -237,3 +237,98 @@ class TestOrganizationalChart(IntegrationTestCase):
         )
         
         self.assertIsInstance(result, list)
+
+
+    def test_13_invalid_json_parsing(self):
+        """Test untuk memicu blok except JSONDecodeError"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_department_children
+        
+        # Kirim string yang diawali '[' tapi bukan JSON yang valid
+        result = get_department_children(
+            parent=None,
+            company="[Invalid JSON String", 
+            department=None
+        )
+        self.assertIsInstance(result, list)
+
+    def test_14_department_descendants(self):
+        """Test untuk memicu blok get_all_descendants di dalam get_department_children"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_department_children
+        
+        # Kirim parent dan department secara bersamaan
+        result = get_department_children(
+            parent=self.test_dept_id,
+            company=self.test_company_name,
+            department=self.test_dept_id,
+            doctype="Department"
+        )
+        self.assertIsInstance(result, list)
+
+    def test_15_employee_with_designation(self):
+        """Test untuk memicu blok if current_title and dept_name"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_employee_children
+        
+        # Update employee agar punya designation
+        frappe.db.set_value("Employee", self.test_emp_id, "designation", "Software Engineer")
+        frappe.db.commit()
+        
+        result = get_employee_children(
+            parent=None,
+            company=self.test_company_name
+        )
+        
+        self.assertIsInstance(result, list)
+        # Pastikan title tergabung dengan benar
+        found_emp = next((node for node in result if node.id == self.test_emp_id), None)
+        if found_emp:
+            self.assertTrue("Software Engineer" in found_emp.title)
+
+    def test_16_get_department_show_self(self):
+        """Test parameter show_self=1"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_department_children
+        
+        result = get_department_children(
+            parent=None,
+            company=self.test_company_name,
+            department=self.test_dept_id,
+            show_self=1
+        )
+        self.assertIsInstance(result, list)
+
+    def test_17_company_all_companies(self):
+        """Memicu kondisi if company == 'All Companies'"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_department_children, get_all_department_nodes
+        
+        res1 = get_department_children(company="All Companies")
+        res2 = get_all_department_nodes(company="All Companies")
+        
+        self.assertIsInstance(res1, list)
+        self.assertIsInstance(res2, list)
+
+    def test_18_json_array_single_element(self):
+        """Memicu blok elif len(parsed) == 1 di parsing JSON"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_department_children, get_employee_children
+        import json
+        
+        company_json = json.dumps([self.test_company_name])
+        
+        get_department_children(company=company_json)
+        get_employee_children(company=company_json)
+
+
+    def test_20_empty_root_ids_and_multiple_depts(self):
+        """Memicu departments.split(',') dan else: return [] saat root_ids kosong"""
+        from hrms_custom.hrms_custom.apis.organizational_chart import get_employee_children
+        import json
+        
+        # 1. Test split koma dengan departemen fiktif yang tidak punya karyawan
+        fake_dept_1 = f"Fake1 {self.timestamp}"
+        fake_dept_2 = f"Fake2 {self.timestamp}"
+        
+        # Format string dengan koma
+        company_json = json.dumps([self.test_company_name, f"{fake_dept_1}, {fake_dept_2}"])
+        
+        res = get_employee_children(parent=None, company=company_json)
+        
+        # Pastikan mengembalikan array kosong karena departemen tersebut tidak punya employee
+        self.assertEqual(res, [])

@@ -262,3 +262,105 @@ class TestDepartmentAPI(IntegrationTestCase):
             delete_department(department="Department Tidak Ada 12345")
         
         self.assertIn("tidak ditemukan", str(context.exception))
+
+    def test_create_department_with_custom_parent(self):
+        """Test create_department dengan parent selain 'All Departments'"""
+        from hrms_custom.hrms_custom.apis.department import create_department
+        
+        # 1. Buat parent department dulu
+        parent_name = f"Parent Dept {self.timestamp}"
+        res_parent = create_department(
+            department=parent_name, 
+            company=self.test_company, 
+            is_group=True
+        )
+        parent_id = res_parent["department"]["name"]
+        
+        # 2. Buat child department di bawah parent tadi
+        res_child = create_department(
+            department=f"Child Dept {self.timestamp}",
+            company=self.test_company,
+            parent_department=parent_id
+        )
+        self.assertEqual(res_child.get("message"), "Department created successfully")
+
+    def test_create_department_with_invalid_parent(self):
+        """Test create_department dengan parent_department yang tidak ada di DB"""
+        from hrms_custom.hrms_custom.apis.department import create_department
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            create_department(
+                department=f"Orphan Dept {self.timestamp}",
+                company=self.test_company,
+                parent_department="Parent Fiktif 12345"
+            )
+        self.assertIn("tidak ditemukan", str(context.exception))
+
+    def test_update_department_full_fields(self):
+        """Test update_department untuk branch company, parent_department, dan string boolean"""
+        from hrms_custom.hrms_custom.apis.department import create_department, update_department
+        
+        # 1. Buat Parent
+        parent_name = f"New Parent {self.timestamp}"
+        res_parent = create_department(department=parent_name, company=self.test_company, is_group=True)
+        parent_id = res_parent["department"]["name"]
+        
+        # 2. Buat Target Dept yang akan diupdate
+        res_target = create_department(department=f"Target Update {self.timestamp}", company=self.test_company)
+        target_id = res_target["department"]["name"]
+        
+        # 3. Buat Company baru untuk test update company
+        company2_name = f"Company Dua {self.timestamp}"
+        frappe.get_doc({
+            "doctype": "Company",
+            "company_name": company2_name,
+            "abbr": "CD2",
+            "default_currency": "IDR"
+        }).insert()
+        frappe.db.commit()
+        
+        # 4. Eksekusi Update semua field (termasuk is_group string)
+        res_update = update_department(
+            department=target_id,
+            company=company2_name,
+            parent_department=parent_id,
+            is_group="false"
+        )
+        self.assertEqual(res_update.get("message"), "Department updated successfully")
+        
+        # Verifikasi
+        dept_doc = frappe.get_doc("Department", target_id)
+        self.assertEqual(dept_doc.company, company2_name)
+        self.assertEqual(dept_doc.parent_department, parent_id)
+        self.assertEqual(dept_doc.is_group, 0)
+        
+        # Cleanup
+        frappe.delete_doc("Company", company2_name, force=True)
+
+    def test_update_department_with_invalid_parent(self):
+        """Test update_department dengan parent_department yang salah"""
+        from hrms_custom.hrms_custom.apis.department import create_department, update_department
+        
+        res_dept = create_department(department=f"Target Update 2 {self.timestamp}", company=self.test_company)
+        target_id = res_dept["department"]["name"]
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            update_department(
+                department=target_id,
+                parent_department="Parent Palsu 999"
+            )
+        self.assertIn("tidak ditemukan", str(context.exception))
+
+    def test_update_department_to_all_departments(self):
+        """Test spesifik untuk branch if parent_department != 'All Departments' di fungsi update"""
+        from hrms_custom.hrms_custom.apis.department import create_department, update_department
+        
+        res_dept = create_department(department=f"Target Update 3 {self.timestamp}", company=self.test_company)
+        target_id = res_dept["department"]["name"]
+        
+        # Update parent kembali ke All Departments
+        res_update = update_department(
+            department=target_id,
+            parent_department="All Departments"
+        )
+        self.assertEqual(res_update.get("message"), "Department updated successfully")

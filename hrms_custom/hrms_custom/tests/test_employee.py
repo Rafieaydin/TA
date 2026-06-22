@@ -315,19 +315,28 @@ class TestEmployeeAPIImport(IntegrationTestCase):
         # Pindahkan fungsi API ke hrms_custom/hrms_custom/api/employee_api.py
         
         self.assertTrue(callable(find_employee_by_name))
-    
-    def test_api_endpoint_url(self):
-        """Test format URL endpoint"""
-        base_url = "http://hrms-test.local:8000"
+
+    def test_create_employee_with_middle_name_and_salutation(self):
+        """Test create_employee dengan middle_name dan salutation terisi"""
+        from hrms_custom.hrms_custom.apis.employee import create_employee
         
-        # Format endpoint yang benar untuk Frappe
-        endpoint1 = f"{base_url}/api/method/get_employee"
-        endpoint2 = f"{base_url}/api/v1/method/get_employee"  # Yang kamu sebutkan
+        new_nippos = "55555555"
+        result = create_employee(
+            nippos=new_nippos,
+            company="test",
+            status="Active",
+            first_name="John",
+            middle_name="Doe",
+            last_name="Smith",
+            salutation="Mr"
+        )
         
-        # Keduanya bisa jalan tergantung konfigurasi route
-        print(f"Endpoint 1: {endpoint1}")
-        print(f"Endpoint 2: {endpoint2}")
+        # Verifikasi blok (middle_name or "") sukses tereksekusi
+        self.assertEqual(result["employee"]["middle_name"], "Doe")
+        self.assertTrue("Doe" in result["employee"]["employee_name"])
         
-        # Test endpoint availability (optional)
-        # response = requests.get(endpoint2)
-        # print(f"Status: {response.status_code}")
+        # Verifikasi salutation
+        self.assertEqual(result["employee"]["salutation"], "Mr")
+        
+        # Cleanup
+        frappe.delete_doc("Employee", result["employee"]["name"], force=True)
